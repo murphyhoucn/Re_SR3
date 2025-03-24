@@ -1,0 +1,5 @@
+datasets/Nature/*
+*.pt
+__pycache__/
+runs/*
+*.jpeg
