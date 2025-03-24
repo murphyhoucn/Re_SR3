@@ -3,3 +3,4 @@ datasets/Nature/*
 __pycache__/
 runs/*
 *.jpeg
+*.jpg

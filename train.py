@@ -10,6 +10,9 @@ from torch.utils.tensorboard import SummaryWriter
 import cv2
 import numpy as np
 
+from torchvision.transforms import InterpolationMode, Resize
+from PIL import Image
+from torchvision.transforms import InterpolationMode, ToPILImage, ToTensor
 from utils import get_current_time
 
 def train_ddpm(time_steps = 2000, epochs = 20, batch_size = 16, device = "cuda", image_dims = (3, 128, 128), low_res_dims = (3, 32, 32)):
@@ -109,11 +112,38 @@ if __name__ == "__main__":
     # 将OrderedDict的权重加载到模型中
     ddpm.load_state_dict(weights)
 
+    # 读取图像
     img = cv2.imread('/mnt/houjinliang/MyCVProject/Re_SR3/datasets/Nature/test/City_1.jpg')
-    img = np.array(img)
-    img_tensor = torch.from_numpy(img)
-    img_tensor = img_tensor.permute(2, 0, 1).float() / 255.0
-    img_tensor = img_tensor.unsqueeze(0)
 
-    print(f"img.shape = {img_tensor.shape}")
-    sample(model=ddpm, lr_img=img_tensor)
+    # 将图像从 BGR 转换为 RGB
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # 将 OpenCV 图像转换为 PIL 图像
+    pil_img = Image.fromarray(img)
+
+    # 定义调整大小的变换，使用 InterpolationMode.BICUBIC
+    downsample_transform = Resize(size=(32, 32), interpolation=InterpolationMode.BICUBIC)
+    up_transform = Resize(size=(32*4, 32*4), interpolation=InterpolationMode.BICUBIC)
+
+    # 将 PIL 图像转换为 PyTorch 张量
+    tensor_img = ToTensor()(pil_img)
+
+    # 应用变换
+    down_tensor_img = downsample_transform(tensor_img)
+    up_tensor_img = up_transform(down_tensor_img)
+
+    # 将 PyTorch 张量转换回 PIL 图像
+    down_pil_img = ToPILImage()(down_tensor_img)
+    up_pil_img = ToPILImage()(up_tensor_img)
+    
+    # 保存调整大小后的图像
+    down_pil_img.save('128DOWN32.jpg')
+    up_pil_img.save('32UP128.jpg')
+
+    # 如果您需要将调整大小后的图像转换回 NumPy 数组或 PyTorch 张量
+    resized_img = np.array(up_pil_img)
+    resized_img_tensor = torch.from_numpy(resized_img).permute(2, 0, 1).float() / 255.0
+    resized_img_tensor = resized_img_tensor.unsqueeze(0)
+
+    print(f"img.shape = {resized_img_tensor.shape}")
+    sample(model=ddpm, lr_img=resized_img_tensor)
